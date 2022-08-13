@@ -1,0 +1,410 @@
+# James Stimac IT-140-X4804
+import time as tm
+
+command_string = ''
+current_loc = 'Great Hall'
+rooms_visited = 1
+rooms_total = 7
+items_total = 6
+rooms_visited_list = ['Great Hall']
+items_obtained = []
+current_item = ''
+proper_commands_movement = ['go North', 'go South', 'go West', 'go East',
+                            'grab Shield', 'retry', 'quit']
+proper_commands_items = ['grab Leggings', 'grab Tome', 'grab Chestplate',
+                         'grab Potion', 'grab Cloak', 'grab Shield', 'quit']
+
+# room directionary and items held
+items = {'Kitchens':
+             {'Shield': 'Sitting on the table is a Dragon Egg Shield.'},
+         'Servant Quarters':
+             {'Leggings': 'Laying on a bed are Dragon Hide Leggings.'},
+         'Library':
+             {'Tome': 'Located near a window you find the Ancient Draconic Language Tome.'},
+         'Private Study':
+             {'Chestplate': 'Hanging on a mannequin is the Dragon Hide Chestplate.'},
+         'North Tower':
+             {'Potion': 'You almost trip on an Obscure Red Potion.'},
+         'Main Bedchambers':
+             {'Cloak': 'Almost blending into the drapery is a Dragon Hide Cloak.'}
+         }
+rooms = {'Great Hall':
+             {'South': 'Kitchens', 'East': 'Library', 'North': 'North Tower', 'West': 'Throne Room'},
+         'Kitchens':
+             {'East': 'Servant Quarters', 'North': 'Great Hall', 'West': 'Throne Room'},
+         'Servant Quarters':
+             {'West': 'Kitchens', 'North': 'Library'},
+         'Library':
+             {'North': 'Private Study', 'West': 'Great Hall'},
+         'Private Study':
+             {'South': 'Library'},
+         'North Tower':
+             {'East': 'Main Bedchambers', 'South': 'Great Hall'},
+         'Main Bedchambers':
+             {'West': 'North Tower', 'South': 'Private Study'}
+         }
+# room descriptions and error messsages
+description_strings = {
+    'Great Hall':
+        'You are in the Great Hall.\nIt is dim and murky.\n'
+        'Oh! There is a Dragon Claw\nDagger at your waist!',
+    'Kitchens':
+        'Welcome to the Kitchens.\nEverything looks sharp, be careful!',
+    'Servant Quarters':
+        'This must be where the staff lives.\n'
+        'Maybe they left something behind...',
+    'Library':
+        'This room is filled with books and manuscripts!',
+    'Private Study':
+        'Wow you found a secret room!\nWhat a cool study!',
+    'North Tower':
+        'Will these stairs ever end!\nAnd there are no windows either!',
+    'Main Bedchambers':
+        'A giant bed, and some musty clothes?\nMust be the Main Bedchamber.',
+    'throne_room_wc_part1':
+        'You discovered all the rooms and\neven made it to the '
+        'Throne Room, Congrats!\nThere is a large being sitting at\n'
+        'the edge of the piles of riches\n',
+    'throne_room_wc_part2':
+        'The great Dragon Beth is before you.\n'
+        'Revel in her opalescence and mystery!\n'
+        "She awakens and says: 'Hello, young one'\n"
+        "'Do you remember me?'------'I am your mother.'\n"
+        "'Yet, you left to explore the world long ago.'\n"
+        "Beth stares at you for quite a while as if\n"
+        "waiting for a response:",
+    'throne_room_lc':
+        'Dang, you blacked out because of the\n'
+        'terrifyingly scary thing in the Throne Room.\n'
+        "'retry' the adventure. or Type 'quit'",
+    'error_message_move':
+        'Please enter a valid command '
+        "(eg.'go North' or 'go East'):",
+    'error_message_items':
+        'Please enter a valid command '
+        "(eg. 'grab Potion' or 'grab Chestplate'):",
+    'error_message_room':
+        'Try a different direction. That is just a wall.'
+        '\nSome of these paths return to walls, so be careful!',
+
+}
+
+
+# functions
+
+def print_border(character='*', num_spaces=15):
+    """ Prints border with specified character and number of repeats """
+    print(' ' * 5, end='')
+    print((character + ' ') * num_spaces)
+    print()
+
+
+def print_inventory(list_):
+    """updates and prints inventory depending on how many items have been obtained"""
+    temp_string = ''
+    temp_string1 = ''
+    temp_string2 = ''
+    print_str = ''
+    print_str1 = ''
+    print_str2 = ''
+    if len(items_obtained) > 0:
+        if len(items_obtained) >= 3:
+            temp_list1 = [item + ', ' for index, item in enumerate(list_) if (index < 2) and (item is not None)]
+            temp_list2 = [item + ', ' for index, item in enumerate(list_) if (index >= 2) and (item is not None)]
+            for string in temp_list1:
+                temp_string1 += string
+            else:
+                print_str1 = temp_string1[0:-2]
+            for string in temp_list2:
+                temp_string2 += string
+            else:
+                print_str2 = temp_string2[0:-2]
+            print('Inventory: Dagger, {one},\n'.format(one=print_str1), '{two}.'.format(two=print_str2))
+
+        elif len(items_obtained) < 3:
+            temp_list = [item + ', ' for item in list_ if (item is not None)]
+            for string in temp_list:
+                temp_string += string
+            else:
+                print_str = temp_string[0:-2]
+            print('Inventory: Dagger, {}'.format(print_str))
+
+    elif len(items_obtained) == 0:
+        print('Iventory: Dagger')
+
+
+def print_room_description(room):
+    """given current_loc returns description from dictionary"""
+    if room in rooms_visited_list:
+        print('You have already visited this room!')
+        print('Welcome back to the {}'.format(room))
+    else:
+        print(description_strings[room])
+
+
+def dict_to_new_room(room, direction):
+    """given current_loc and new direction returns updated current_loc"""
+    global current_loc
+    current_loc = rooms[room][direction[3:10]]
+    return current_loc
+
+
+def print_item_description(key):
+    """given a key to items dict prints item description and completes interaction code"""
+    global command_string, current_loc
+    current_item = key
+    while command_string != 'q':
+    # loop to keep error messaging and input validation
+        if len(items_obtained) == items_total:
+        # if all items have been collected
+            print('You have collected all the items.')
+            print('Maybe you should head the the Throne Room...')
+            command_string = 'q'
+
+        elif len(items_obtained) < items_total and current_loc in items.keys():
+        # is this a valid room and are there still items to obtain
+            if current_item not in items_obtained:
+            # item interaction code
+                print('{}'.format(items[current_loc][current_item]))
+                print('Would you like to grab the {}?'.format(current_item))
+                command_string = input().strip()
+                while command_string != "grab " + current_item:
+                    print()
+                    command_string = input(description_strings['error_message_items'] + '\n').strip()
+                    print_border()
+                    continue
+                if command_string[5:30] == current_item:
+                    # is item command equal to the item in this room
+                    items_obtained.append(current_item)
+                    print('You grabbed it. One item down!')
+                    print()
+                    command_string = 'q'
+            else:
+                print('There is no item in this room.')
+                print()
+                command_string = 'q'
+        else:
+            print('There is no item in this room.')
+            print()
+            command_string = 'q'
+
+def on_action_func(item='none', style=0):
+    """
+    parses input and potentially requests input for error messaging (can have an item input for print_item_description()
+    which requires a dict key argument from item and can have style inputs of default 0 or 1.
+    usage: on_action_fun(item, style)
+    """
+    global command_string, current_loc,\
+            items_obtained
+    if style == 0:
+        # generates most actions and responses for game
+        dict_to_new_room(current_loc, command_string)
+        print_room_description(current_loc)
+        print_item_description(item)
+        print_inventory(items_obtained)
+        command_string = input('Enter a command to move:\n').strip()
+        while command_string not in proper_commands_movement:
+            print(description_strings['error_message_move'])
+            command_string = input().strip()
+            print_border()
+            continue
+        print_border()
+    elif style == 1:
+        #error messaging for movement
+        print(description_strings['error_message_room'])
+        command_string = input().strip()
+        while command_string not in proper_commands_movement:
+            print(description_strings['error_message_move'])
+            command_string = input().strip()
+            continue
+        print_border()
+        return command_string
+
+
+
+def end_game(style=0):
+    """
+    depending on style parameter prints gets input to either quit or retry with default 0 (loss consition)
+    and prints win messaging with style = 1 (win condition) also creates file in local directory that
+    stores user message to developer.
+    """
+    global command_string, current_loc, command_string, \
+        rooms_visited, rooms_visited_list, current_item, \
+        items_obtained
+    if style == 0:
+        # "you lost the game, retry?"
+        print(description_strings['throne_room_lc'])
+        command_string = ''
+        current_loc = 'Great Hall'
+        rooms_visited = 1
+        rooms_visited_list = ['Great Hall']
+        items_obtained = []
+        current_item = ''
+        command_string = input().strip()
+        if command_string == 'retry':
+            print_border()
+            print(beginning_of_game_message)
+            print_border()
+            tm.sleep(1)
+            print(description_strings['Great Hall'])
+            print_inventory(items_obtained)
+            command_string = input('Enter a command to get started:\n').strip()
+            while command_string not in proper_commands_movement:
+                print(description_strings['error_message_move'])
+                command_string = input().strip()
+                continue
+            print_border()
+    if style == 1:
+        # "you won the game" creates file with a note for developer in local directory.
+        print(description_strings['throne_room_wc_part1'])
+        tm.sleep(1)
+        print(description_strings['throne_room_wc_part2'])
+        with open('dragon_mother_convo.txt', 'w') as dmc_file:
+            dmc_file.write(input('Enter whatever you want to say to the Game Team:\n'))
+        print(end_of_game_message)
+        command_string = 'quit'
+        return command_string
+
+
+# game start message
+beginning_of_game_message = 'Welcome to the Text Based Decision Game!\n' \
+                            '\n' \
+                            "To move enter a command such as 'go North' or 'go South'.\n" \
+                            "To interact with items enter a command such as 'grab Tome'.\n" \
+                            'If you want to win, try to find all the rooms and collect\n' \
+                            'all of the items before you find the Throne Room! Good Luck!\n' \
+                            '\n' \
+                            "If you ever want to quit the game enter 'quit'."
+
+end_of_game_message = 'Beth winks at you and for as long as you choose\n' \
+                      'she teaches you about Dragon kind and how you are\n' \
+                      'able to transform between human form and dragon form!\n' \
+                      'Thank you for playing! I hope you enjoyed the game.'
+
+print_border()
+print(beginning_of_game_message)
+print_border()
+tm.sleep(1)
+# get first input from user
+print(description_strings['Great Hall'])
+print_inventory(items_obtained)
+
+command_string = input('Enter a command to get started:\n').strip()
+print_border()
+# check if command is quit and also if it is in allowed commands
+
+while command_string != 'quit':
+    if current_loc not in rooms_visited_list[:]:
+        rooms_visited_list.append(current_loc)
+        rooms_visited += 1
+    while command_string not in proper_commands_movement:
+        print(description_strings['error_message_move'])
+        command_string = input().strip()
+        print_border()
+        continue
+    # starts moving between rooms
+    if current_loc == 'Great Hall':
+        # from Great Hall
+        if command_string == 'go South':
+            on_action_func('Shield')
+            continue
+        elif command_string == 'go North':
+            on_action_func('Potion')
+            continue
+        elif command_string == 'go East':
+            on_action_func('Tome')
+            continue
+        elif command_string == 'go West':
+            # win condition
+            if rooms_visited == rooms_total and len(items_obtained) == items_total:
+                end_game(1)
+            # loss condition
+            else:
+                end_game()
+                continue
+    elif current_loc == 'Kitchens':
+        # from Kitchens
+        if command_string == 'go East':
+            on_action_func('Leggings')
+            continue
+        elif command_string == 'go North':
+            on_action_func('none')
+            continue
+        elif command_string == 'go West':
+            # win condition
+            if rooms_visited == rooms_total and len(items_obtained) == items_total:
+                end_game(1)
+            # loss condition
+            else:
+                end_game()
+                continue
+        else:
+            on_action_func('none', 1)
+            continue
+
+    elif current_loc == 'Servant Quarters':
+        # from Servant Quarters
+        if command_string == 'go West':
+            on_action_func('Shield')
+            print_border()
+            continue
+        elif command_string == 'go North':
+            on_action_func('Tome')
+            continue
+        else:
+            on_action_func('none', 1)
+            continue
+
+    elif current_loc == 'Library':
+        # from Library
+        if command_string == 'go North':
+            on_action_func('Chestplate')
+            continue
+        elif command_string == 'go West':
+            on_action_func('none')
+            continue
+        else:
+            on_action_func('none', 1)
+            continue
+
+    elif current_loc == 'Private Study':
+        # from Private Study
+        if command_string == 'go South':
+            on_action_func('Tome')
+            continue
+        else:
+            on_action_func('none', 1)
+            continue
+
+    elif current_loc == 'North Tower':
+        # from North Tower
+        if command_string == 'go South':
+            on_action_func('none')
+            continue
+        elif command_string == 'go East':
+            on_action_func('Cloak')
+            continue
+
+        elif command_string == 'go West':
+            # win condition
+            if rooms_visited == rooms_total and len(items_obtained) == items_total:
+                end_game(1)
+            # loss condition
+            else:
+                end_game()
+                continue
+        else:
+            on_action_func('none', 1)
+            continue
+
+    elif current_loc == 'Main Bedchambers':
+        # from Main Bedchambers
+        if command_string == 'go West':
+            on_action_func('Potion')
+            continue
+        elif command_string == 'go South':
+            on_action_func('Chestplate')
+            continue
+        else:
+            on_action_func('none', 1)
+            continue
